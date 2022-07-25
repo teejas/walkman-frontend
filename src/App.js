@@ -1,6 +1,6 @@
 import Login from './Login';
 import React, { Component, useCallback, useEffect }  from 'react';
-import { Box, Button, Typography, Grid } from '@material-ui/core';
+import { Box, Button, Typography, Grid, List, ListItem } from '@material-ui/core';
 import { Stack, HStack, VStack } from '@chakra-ui/react';
 import SpotifyWebPlayer from "react-spotify-web-playback"
 import axios from 'axios';
@@ -24,7 +24,7 @@ const skipTrack = (deviceId) => {
   console.log("authOptions: ", authOptions)
   axios(authOptions)
   .then(function (response) {
-    console.log("response: ", response)
+    console.log(response);
   })
   .catch(function (error) {
     console.log(error);
@@ -32,16 +32,11 @@ const skipTrack = (deviceId) => {
 }
 
 const spotifyCallback = (state) => {
-  console.log("state: ", state)
   if (track != state.track.id && !state.isSaved) {
     track = state.track.id
     skipping = true
-    console.log("skipping: ", skipping)
   } else if(state.isSaved) {
-    console.log("saved: ", state.track.name)
-    console.log("clearing timeout")
     skipping = false
-    console.log("skipping: ", skipping)
     if(timeout) {
       clearTimeout(timeout)
       timeout = null
@@ -52,12 +47,10 @@ const spotifyCallback = (state) => {
       clearTimeout(timeout)
       timeout = null
     }
-    console.log("setting timeout")
     timeout = setTimeout(() => {
       skipTrack(state.deviceId)
     }, 30000)
     skipping = false
-    console.log("skipping: ", skipping)
   }
 }
 
@@ -84,6 +77,8 @@ const App = (props) => {
   const code = new URLSearchParams(window.location.search).get('code')
   const [token, setToken] = React.useState(null)
   const [uris, setUris] = React.useState([])
+  const [playlists, setPlaylists] = React.useState([])
+  const [playlist, setPlaylist] = React.useState(null)
 
   const fetchToken = () => {
     var bodyFormData = new FormData();
@@ -109,9 +104,9 @@ const App = (props) => {
     });
   }
 
-  const fetchRecommendations = () => {
+  const fetchPlaylists = () => {
     var authOptions = {
-      url: process.env.REACT_APP_BACKEND_URL + '/api/spotify/get_recommendations/',
+      url: process.env.REACT_APP_BACKEND_URL + '/api/spotify/get_playlists/',
       method: 'GET',
       headers: {
         'Content-Type' : 'application/json'
@@ -120,7 +115,27 @@ const App = (props) => {
 
     axios(authOptions)
     .then(function (response) {
-      console.log("response: ", response)
+      setPlaylists(response.data)
+    })
+    .catch(function (error) {
+      console.log(error);
+    });
+  }
+
+  const fetchRecommendations = (playlist_id) => {
+    var bodyFormData = new FormData();
+    bodyFormData.append('playlistId', playlist_id);
+    var authOptions = {
+      url: process.env.REACT_APP_BACKEND_URL + '/api/spotify/get_recommendations/',
+      method: 'POST',
+      data: bodyFormData,
+      headers: {
+        'Content-Type' : 'application/json'
+      }
+    };
+
+    axios(authOptions)
+    .then(function (response) {
       setUris(response.data)
     })
     .catch(function (error) {
@@ -130,7 +145,7 @@ const App = (props) => {
   
   useEffect(() => {
     fetchToken();
-    fetchRecommendations();
+    fetchPlaylists();
   }, [])
 
   return (
@@ -143,10 +158,30 @@ const App = (props) => {
       >
         <Grid item>
           {
-            uris.length > 0 ?
+            playlist && uris.length > 0 ?
               <MySpotifyPlayer code={token} uris={uris} />
             :
-              <Typography variant="h4">Loading web player...</Typography>
+              playlists.length > 0 && !playlist ?
+                <Box>
+                  <Typography variant="h4">Select a playlist</Typography>
+                  <List>
+                    {
+                      playlists.map((playlist, index) => {
+                        return (
+                          <ListItem key={index}>
+                            <Button variant="contained" color="primary" key={index} onClick={() => {
+                              setPlaylist(playlist.uri)
+                              fetchRecommendations(playlist.uri)
+                            }
+                            }>{playlist.name}</Button>
+                          </ListItem>
+                        )
+                      })
+                    }
+                  </List>
+                </Box>
+              :
+                <Typography variant="h4">Loading web player...</Typography>
           }
         </Grid>
       </Grid>
