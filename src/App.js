@@ -93,11 +93,9 @@ const App = (props) => {
         'Content-Type' : 'application/json'
       }
     };
-
-    console.log("authOptions: ", authOptions)
+    
     axios(authOptions)
     .then(function (response) {
-      console.log(response);
       if(response.data != "No code") {
         setToken(response.data)
       }
