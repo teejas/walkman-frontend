@@ -97,7 +97,10 @@ const App = (props) => {
     console.log("authOptions: ", authOptions)
     axios(authOptions)
     .then(function (response) {
-      setToken(response.data)
+      console.log(response);
+      if(response.data != "No code") {
+        setToken(response.data)
+      }
     })
     .catch(function (error) {
       console.log(error);
